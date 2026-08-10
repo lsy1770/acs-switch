@@ -111,6 +111,25 @@ function modelCatalog(
 
 export const codexProviderPresets: CodexProviderPreset[] = [
   {
+    name: "ACS Gateway",
+    websiteUrl: "https://acsgw.top/config-guide",
+    apiKeyUrl: "https://acsgw.top/dashboard/keys",
+    auth: generateThirdPartyAuth(""),
+    config: generateThirdPartyConfig(
+      "ACS Gateway",
+      "https://acsgw.top/openai",
+    ),
+    endpointCandidates: ["https://acsgw.top/openai"],
+    category: "aggregator",
+    theme: {
+      icon: "generic",
+      backgroundColor: "#166534",
+      textColor: "#FFFFFF",
+    },
+    icon: "generic",
+    iconColor: "#166534",
+  },
+  {
     name: "OpenAI Official",
     websiteUrl: "https://chatgpt.com/codex",
     isOfficial: true,

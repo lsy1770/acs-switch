@@ -1,6 +1,11 @@
 import { invoke } from "@tauri-apps/api/core";
 
-export type ResourceType = "provider" | "prompt" | "mcp" | "skill";
+export type ResourceType =
+  | "provider"
+  | "prompt"
+  | "mcp"
+  | "skill"
+  | "acs-profile";
 
 export interface DeepLinkImportRequest {
   version: string;
@@ -17,6 +22,7 @@ export interface DeepLinkImportRequest {
     | "hermes";
   name?: string;
   enabled?: boolean;
+  provisionToken?: string;
 
   // Provider fields
   homepage?: string;
@@ -74,12 +80,18 @@ export type ImportResult =
       importedIds: string[];
       failed: Array<{ id: string; error: string }>;
     }
-  | { type: "skill"; key: string };
+  | { type: "skill"; key: string }
+  | {
+      type: "acs-profile";
+      profileName: string;
+      importedIds: string[];
+      apps: string[];
+    };
 
 export const deeplinkApi = {
   /**
    * Parse a deep link URL
-   * @param url The ccswitch:// URL to parse
+   * @param url The acsswitch:// URL to parse
    * @returns Parsed deep link request
    */
   parseDeeplink: async (url: string): Promise<DeepLinkImportRequest> => {

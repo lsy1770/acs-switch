@@ -1,6 +1,7 @@
 use crate::deeplink::{
-    import_mcp_from_deeplink, import_prompt_from_deeplink, import_provider_from_deeplink,
-    import_skill_from_deeplink, parse_deeplink_url, DeepLinkImportRequest,
+    import_acs_profile_from_deeplink, import_mcp_from_deeplink, import_prompt_from_deeplink,
+    import_provider_from_deeplink, import_skill_from_deeplink, parse_deeplink_url,
+    DeepLinkImportRequest,
 };
 use crate::store::AppState;
 use tauri::State;
@@ -82,6 +83,17 @@ pub async fn import_from_deeplink_unified(
             Ok(serde_json::json!({
                 "type": "skill",
                 "key": skill_key
+            }))
+        }
+        "acs-profile" => {
+            let result = import_acs_profile_from_deeplink(&state, request)
+                .await
+                .map_err(|e| e.to_string())?;
+            Ok(serde_json::json!({
+                "type": "acs-profile",
+                "profileName": result.profile_name,
+                "importedIds": result.imported_ids,
+                "apps": result.apps
             }))
         }
         _ => Err(format!("Unsupported resource type: {}", request.resource)),

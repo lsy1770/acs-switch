@@ -75,6 +75,26 @@ export interface ProviderPreset {
 
 export const providerPresets: ProviderPreset[] = [
   {
+    name: "ACS Gateway",
+    websiteUrl: "https://acsgw.top/config-guide",
+    apiKeyUrl: "https://acsgw.top/dashboard/keys",
+    settingsConfig: {
+      env: {
+        ANTHROPIC_BASE_URL: "https://acsgw.top/claude",
+        ANTHROPIC_AUTH_TOKEN: "",
+      },
+    },
+    endpointCandidates: ["https://acsgw.top/claude"],
+    category: "aggregator",
+    theme: {
+      icon: "generic",
+      backgroundColor: "#166534",
+      textColor: "#FFFFFF",
+    },
+    icon: "generic",
+    iconColor: "#166534",
+  },
+  {
     name: "Claude Official",
     websiteUrl: "https://www.anthropic.com/claude-code",
     settingsConfig: {

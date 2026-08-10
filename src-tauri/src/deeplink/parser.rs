@@ -1,6 +1,6 @@
 //! Deep link URL parser
 //!
-//! Parses ccswitch:// URLs into DeepLinkImportRequest structures.
+//! Parses acsswitch:// URLs into DeepLinkImportRequest structures.
 
 use super::utils::validate_url;
 use super::DeepLinkImportRequest;
@@ -8,10 +8,10 @@ use crate::error::AppError;
 use std::collections::HashMap;
 use url::Url;
 
-/// Parse a ccswitch:// URL into a DeepLinkImportRequest
+/// Parse an acsswitch:// URL into a DeepLinkImportRequest
 ///
 /// Expected format:
-/// ccswitch://v1/import?resource={type}&...
+/// acsswitch://v1/import?resource={type}&...
 pub fn parse_deeplink_url(url_str: &str) -> Result<DeepLinkImportRequest, AppError> {
     // Parse URL
     let url = Url::parse(url_str)
@@ -19,9 +19,9 @@ pub fn parse_deeplink_url(url_str: &str) -> Result<DeepLinkImportRequest, AppErr
 
     // Validate scheme
     let scheme = url.scheme();
-    if scheme != "ccswitch" {
+    if scheme != "acsswitch" {
         return Err(AppError::InvalidInput(format!(
-            "Invalid scheme: expected 'ccswitch', got '{scheme}'"
+            "Invalid scheme: expected 'acsswitch', got '{scheme}'"
         )));
     }
 
@@ -61,6 +61,7 @@ pub fn parse_deeplink_url(url_str: &str) -> Result<DeepLinkImportRequest, AppErr
         "prompt" => parse_prompt_deeplink(&params, version, resource),
         "mcp" => parse_mcp_deeplink(&params, version, resource),
         "skill" => parse_skill_deeplink(&params, version, resource),
+        "acs-profile" => parse_acs_profile_deeplink(&params, version, resource),
         _ => Err(AppError::InvalidInput(format!(
             "Unsupported resource type: {resource}"
         ))),
@@ -173,6 +174,7 @@ fn parse_provider_deeplink(
         usage_access_token,
         usage_user_id,
         usage_auto_interval,
+        provision_token: None,
     })
 }
 
@@ -243,6 +245,7 @@ fn parse_prompt_deeplink(
         usage_access_token: None,
         usage_user_id: None,
         usage_auto_interval: None,
+        provision_token: None,
     })
 }
 
@@ -315,6 +318,7 @@ fn parse_mcp_deeplink(
         usage_access_token: None,
         usage_user_id: None,
         usage_auto_interval: None,
+        provision_token: None,
     })
 }
 
@@ -370,5 +374,37 @@ fn parse_skill_deeplink(
         usage_access_token: None,
         usage_user_id: None,
         usage_auto_interval: None,
+        provision_token: None,
+    })
+}
+
+fn parse_acs_profile_deeplink(
+    params: &HashMap<String, String>,
+    version: String,
+    resource: String,
+) -> Result<DeepLinkImportRequest, AppError> {
+    let token = params
+        .get("token")
+        .map(|value| value.trim())
+        .filter(|value| (32..=128).contains(&value.len()))
+        .ok_or_else(|| {
+            AppError::InvalidInput("Missing or invalid ACS provisioning token".to_string())
+        })?;
+
+    if !token
+        .bytes()
+        .all(|byte| byte.is_ascii_alphanumeric() || byte == b'-' || byte == b'_')
+    {
+        return Err(AppError::InvalidInput(
+            "Invalid ACS provisioning token format".to_string(),
+        ));
+    }
+
+    Ok(DeepLinkImportRequest {
+        version,
+        resource,
+        name: Some("ACS Gateway profile".to_string()),
+        provision_token: Some(token.to_string()),
+        ..Default::default()
     })
 }

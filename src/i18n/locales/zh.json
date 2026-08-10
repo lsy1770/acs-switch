@@ -1,7 +1,7 @@
 {
   "app": {
-    "title": "CC Switch",
-    "description": "Claude Code / Codex / Gemini CLI 全方位辅助工具"
+    "title": "ACS Switch",
+    "description": "ACS Gateway 编程工具配置与模型切换助手"
   },
   "common": {
     "add": "添加",
@@ -45,9 +45,9 @@
     "notSet": "未设置"
   },
   "firstRunNotice": {
-    "title": "欢迎使用 CC Switch",
-    "bodyDefault": "CC Switch 可以帮你在 Claude Code / Codex / Gemini CLI 的多个供应商之间一键切换。如果你之前已经配置过这些工具，CC Switch 会自动把现有设置保存为名为 “default” 的供应商，保证你的配置不会丢失。",
-    "bodyOfficial": "列表里还预置了 “官方（Official）” 供应商，随时点一下即可切回官方默认配置。切换前 CC Switch 会自动把当前配置备份回 default，可以放心来回切。CC Switch 就是这样工作的 😊",
+    "title": "欢迎使用 ACS Switch",
+    "bodyDefault": "ACS Switch 可通过一次确认，为 Claude Code、Codex、Gemini CLI 等编程工具切换 ACS Gateway 配置档案。已有工具配置会保留为 default，不会丢失。",
+    "bodyOfficial": "需要恢复工具原始端点时可选择 Official。切换配置档案前，ACS Switch 会自动备份当前设置。",
     "confirm": "我知道了"
   },
   "apiKeyInput": {
@@ -2439,6 +2439,10 @@
     }
   },
   "deeplink": {
+    "acsProfileTitle": "导入 ACS Gateway 配置",
+    "acsProfileDescription": "确认后才会使用一次性令牌交换配置。",
+    "acsProfileSecurity": "ACS Switch 仅向 ACS Gateway 交换此令牌，API 密钥不会写入深链。",
+    "provisionToken": "一次性令牌",
     "confirmImport": "确认导入供应商配置",
     "confirmImportDescription": "以下配置将导入到 CC Switch",
     "importPrompt": "导入提示词",

@@ -1,7 +1,7 @@
 {
-  "name": "cc-switch",
+  "name": "acs-switch",
   "version": "3.19.2",
-  "description": "All-in-One Assistant for Claude Code, Codex & Gemini CLI",
+  "description": "ACS Gateway assistant for Claude Code, Codex and Gemini CLI",
   "type": "module",
   "scripts": {
     "dev": "pnpm tauri dev",

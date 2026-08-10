@@ -1,6 +1,6 @@
 //! Deep link import functionality for CC Switch
 //!
-//! This module implements the ccswitch:// protocol for importing configurations
+//! This module implements the acsswitch:// protocol for importing configurations
 //! via deep links. Supports importing:
 //! - Provider configurations (Claude/Codex/Gemini)
 //! - MCP server configurations
@@ -8,6 +8,7 @@
 //! - Skills
 //!
 
+mod acs_profile;
 mod mcp;
 mod parser;
 mod prompt;
@@ -21,6 +22,7 @@ mod tests;
 use serde::{Deserialize, Serialize};
 
 // Re-export public API
+pub use acs_profile::import_acs_profile_from_deeplink;
 pub use mcp::import_mcp_from_deeplink;
 pub use parser::parse_deeplink_url;
 pub use prompt::import_prompt_from_deeplink;
@@ -29,14 +31,14 @@ pub use skill::import_skill_from_deeplink;
 
 /// Deep link import request model
 ///
-/// Represents a parsed ccswitch:// URL ready for processing.
+/// Represents a parsed acsswitch:// URL ready for processing.
 /// This struct contains all possible fields for all resource types.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DeepLinkImportRequest {
     /// Protocol version (e.g., "v1")
     pub version: String,
-    /// Resource type to import: "provider" | "prompt" | "mcp" | "skill"
+    /// Resource type to import: "provider" | "prompt" | "mcp" | "skill" | "acs-profile"
     pub resource: String,
 
     // ============ Common fields ============
@@ -49,6 +51,11 @@ pub struct DeepLinkImportRequest {
     /// Whether to enable after import (default: false)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub enabled: Option<bool>,
+
+    // ============ ACS profile fields ============
+    /// Short-lived token exchanged directly with ACS Gateway after confirmation.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub provision_token: Option<String>,
 
     // ============ Provider-specific fields ============
     /// Provider homepage URL

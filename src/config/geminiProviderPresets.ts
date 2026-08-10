@@ -34,6 +34,28 @@ export interface GeminiProviderPreset {
 
 export const geminiProviderPresets: GeminiProviderPreset[] = [
   {
+    name: "ACS Gateway",
+    websiteUrl: "https://acsgw.top/config-guide",
+    apiKeyUrl: "https://acsgw.top/dashboard/keys",
+    settingsConfig: {
+      env: {
+        GOOGLE_GEMINI_BASE_URL: "https://acsgw.top/gemini",
+        GEMINI_API_KEY: "",
+      },
+    },
+    baseURL: "https://acsgw.top/gemini",
+    description: "ACS Gateway",
+    category: "aggregator",
+    endpointCandidates: ["https://acsgw.top/gemini"],
+    theme: {
+      icon: "generic",
+      backgroundColor: "#166534",
+      textColor: "#FFFFFF",
+    },
+    icon: "generic",
+    iconColor: "#166534",
+  },
+  {
     name: "Google Official",
     websiteUrl: "https://ai.google.dev/",
     apiKeyUrl: "https://aistudio.google.com/apikey",

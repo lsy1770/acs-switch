@@ -1,7 +1,7 @@
 {
   "app": {
-    "title": "CC Switch",
-    "description": "Claude Code・Codex・Gemini CLI のためのオールインワンアシスタント"
+    "title": "ACS Switch",
+    "description": "ACS Gateway のコーディングツール設定・モデル切替アシスタント"
   },
   "common": {
     "add": "追加",
@@ -45,9 +45,9 @@
     "notSet": "未設定"
   },
   "firstRunNotice": {
-    "title": "CC Switch へようこそ",
-    "bodyDefault": "CC Switch は Claude Code / Codex / Gemini CLI の複数プロバイダーをワンクリックで切り替えられるツールです。すでにこれらのツールを設定済みの場合、CC Switch は現在の設定を「default」という名前のプロバイダーとして自動的に保存するので、既存の設定が失われることはありません。",
-    "bodyOfficial": "リストには「Official（公式）」プリセットも用意されており、公式バージョンに戻したくなったらクリックするだけで切り替えられます。切り替える前に現在の設定は自動で default にバックアップされるので、自由に行き来できます。これが CC Switch の仕組みです 😊",
+    "title": "ACS Switch へようこそ",
+    "bodyDefault": "ACS Switch は、一度の確認で Claude Code、Codex、Gemini CLI などの ACS Gateway プロファイルを切り替えます。既存のツール設定は default として保持されます。",
+    "bodyOfficial": "元のツールエンドポイントへ戻す場合は Official を選択できます。プロファイルを切り替える前に、ACS Switch が現在の設定をバックアップします。",
     "confirm": "了解しました"
   },
   "apiKeyInput": {
@@ -2439,6 +2439,10 @@
     }
   },
   "deeplink": {
+    "acsProfileTitle": "ACS Gateway プロファイルをインポート",
+    "acsProfileDescription": "確認後にのみ、ワンタイムトークンを設定と交換します。",
+    "acsProfileSecurity": "ACS Switch はこのトークンを ACS Gateway と直接交換します。API キーはディープリンクに保存されません。",
+    "provisionToken": "ワンタイムトークン",
     "confirmImport": "プロバイダーのインポートを確認",
     "confirmImportDescription": "次の設定をディープリンクから CC Switch へインポートします",
     "importPrompt": "プロンプトをインポート",

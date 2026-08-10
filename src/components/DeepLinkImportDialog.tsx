@@ -17,6 +17,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { PromptConfirmation } from "./deeplink/PromptConfirmation";
 import { McpConfirmation } from "./deeplink/McpConfirmation";
 import { SkillConfirmation } from "./deeplink/SkillConfirmation";
+import { AcsProfileConfirmation } from "./deeplink/AcsProfileConfirmation";
 import { ProviderIcon } from "./ProviderIcon";
 import {
   classifyEndpoint,
@@ -182,6 +183,18 @@ export function DeepLinkImportDialog() {
             }),
             closeButton: true,
           });
+        } else if (result.type === "acs-profile") {
+          await Promise.all(
+            result.apps.map((app) =>
+              queryClient.invalidateQueries({
+                queryKey: ["providers", app],
+              }),
+            ),
+          );
+          toast.success(t("deeplink.importSuccess"), {
+            description: result.profileName,
+            closeButton: true,
+          });
         }
       } else if (isMcpImportResult(result)) {
         // 兜底处理：旧版本后端可能未返回 type 字段
@@ -267,6 +280,8 @@ export function DeepLinkImportDialog() {
         return t("deeplink.importMcp");
       case "skill":
         return t("deeplink.importSkill");
+      case "acs-profile":
+        return t("deeplink.acsProfileTitle");
       default:
         return t("deeplink.confirmImport");
     }
@@ -281,6 +296,8 @@ export function DeepLinkImportDialog() {
         return t("deeplink.importMcpDescription");
       case "skill":
         return t("deeplink.importSkillDescription");
+      case "acs-profile":
+        return t("deeplink.acsProfileDescription");
       default:
         return t("deeplink.confirmImportDescription");
     }
@@ -307,6 +324,9 @@ export function DeepLinkImportDialog() {
               )}
               {request.resource === "skill" && (
                 <SkillConfirmation request={request} />
+              )}
+              {request.resource === "acs-profile" && (
+                <AcsProfileConfirmation request={request} />
               )}
 
               {/* Legacy Provider View */}

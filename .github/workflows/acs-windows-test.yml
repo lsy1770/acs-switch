@@ -1,0 +1,98 @@
+name: ACS Windows Test Build
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: acs-windows-test-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-windows-x64:
+    name: Build unsigned Windows x64 installer
+    runs-on: windows-2022
+    timeout-minutes: 60
+
+    env:
+      CARGO_TERM_COLOR: always
+      CARGO_INCREMENTAL: "0"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+
+      - name: Setup pnpm
+        shell: pwsh
+        run: |
+          corepack enable
+          corepack install
+          pnpm --version
+
+      - name: Setup Rust 1.95
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.95"
+
+      - name: Cache dependencies and Rust build
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
+          key: acs-windows-x64-${{ hashFiles('pnpm-lock.yaml', 'src-tauri/Cargo.lock') }}
+          restore-keys: |
+            acs-windows-x64-
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Type check
+        run: pnpm typecheck
+
+      - name: Test ACS profile deep links
+        run: cargo test --manifest-path src-tauri/Cargo.toml test_parse_acs_profile --lib
+
+      - name: Build NSIS installer
+        run: pnpm tauri build --bundles nsis
+
+      - name: Collect installer and checksum
+        id: artifact
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $installer = Get-ChildItem "src-tauri/target/release/bundle/nsis" -Filter "*.exe" -File |
+            Select-Object -First 1
+
+          if (-not $installer) {
+            throw "NSIS installer was not generated"
+          }
+
+          New-Item -ItemType Directory -Path "release-assets" -Force | Out-Null
+          Copy-Item $installer.FullName "release-assets/$($installer.Name)"
+
+          $hash = (Get-FileHash $installer.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  $($installer.Name)" | Set-Content "release-assets/SHA256SUMS.txt" -Encoding ascii
+
+          "installer=$($installer.Name)" | Out-File $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "### ACS Switch Windows test build" | Out-File $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          "- Installer: ``$($installer.Name)``" | Out-File $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          "- Commit: ``${{ github.sha }}``" | Out-File $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          "- This is an unsigned test build, so Windows SmartScreen may show a warning." | Out-File $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+
+      - name: Upload Windows installer
+        uses: actions/upload-artifact@v7
+        with:
+          name: acs-switch-windows-x64-${{ github.run_number }}
+          path: release-assets/*
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
