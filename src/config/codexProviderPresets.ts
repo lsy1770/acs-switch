@@ -115,10 +115,7 @@ export const codexProviderPresets: CodexProviderPreset[] = [
     websiteUrl: "https://acsgw.top/config-guide",
     apiKeyUrl: "https://acsgw.top/dashboard/keys",
     auth: generateThirdPartyAuth(""),
-    config: generateThirdPartyConfig(
-      "ACS Gateway",
-      "https://acsgw.top/openai",
-    ),
+    config: generateThirdPartyConfig("ACS Gateway", "https://acsgw.top/openai"),
     endpointCandidates: ["https://acsgw.top/openai"],
     category: "aggregator",
     theme: {

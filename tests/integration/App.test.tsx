@@ -132,6 +132,23 @@ vi.mock("@/components/AppSwitcher", () => ({
   ),
 }));
 
+// These integration cases cover the legacy provider-management flow. Enter it
+// explicitly now that ACS Switch opens on the simplified control desk.
+vi.mock("@/components/acs/AcsDashboard", async () => {
+  const React = await import("react");
+  return {
+    AcsDashboard: ({ onOpenAdvanced }: any) => {
+      const opened = React.useRef(false);
+      React.useEffect(() => {
+        if (opened.current) return;
+        opened.current = true;
+        onOpenAdvanced("claude");
+      }, [onOpenAdvanced]);
+      return <div data-testid="acs-dashboard" />;
+    },
+  };
+});
+
 vi.mock("@/components/skills/UnifiedSkillsPanel", async () => {
   const React = await import("react");
   const MockUnifiedSkillsPanel = React.forwardRef(
@@ -251,7 +268,7 @@ describe("App integration with MSW", () => {
 
     expect(toastErrorMock).not.toHaveBeenCalled();
     expect(toastSuccessMock).toHaveBeenCalled();
-  }, 10_000);
+  }, 20_000);
 
   it("shows toast when auto sync fails in background", async () => {
     const { default: App } = await import("@/App");

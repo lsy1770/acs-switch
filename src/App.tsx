@@ -98,6 +98,7 @@ import ToolsPanel from "@/components/openclaw/ToolsPanel";
 import AgentsDefaultsPanel from "@/components/openclaw/AgentsDefaultsPanel";
 import OpenClawHealthBanner from "@/components/openclaw/OpenClawHealthBanner";
 import HermesMemoryPanel from "@/components/hermes/HermesMemoryPanel";
+import { AcsDashboard } from "@/components/acs/AcsDashboard";
 
 type View =
   | "providers"
@@ -178,6 +179,7 @@ function App() {
   const sharedFeatureApp: AppId =
     activeApp === "claude-desktop" ? "claude" : activeApp;
   const [currentView, setCurrentView] = useState<View>(getInitialView);
+  const [showAdvancedProviders, setShowAdvancedProviders] = useState(false);
   const [skillsDiscoverySource, setSkillsDiscoverySource] =
     useState<SkillsPageSource>("repos");
   const [settingsDefaultTab, setSettingsDefaultTab] = useState("general");
@@ -995,6 +997,16 @@ function App() {
         case "openclawAgents":
           return <AgentsDefaultsPanel />;
         default:
+          if (!showAdvancedProviders) {
+            return (
+              <AcsDashboard
+                onOpenAdvanced={(app) => {
+                  setActiveApp(app);
+                  setShowAdvancedProviders(true);
+                }}
+              />
+            );
+          }
           return (
             <div className="px-6 flex flex-col flex-1 min-h-0 overflow-hidden">
               <div className="flex-1 overflow-y-auto overflow-x-hidden pb-12 px-1">
@@ -1251,6 +1263,17 @@ function App() {
                 >
                   <Settings className="w-4 h-4" />
                 </Button>
+                {showAdvancedProviders && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowAdvancedProviders(false)}
+                    className="gap-2 hover:bg-black/5 dark:hover:bg-white/5"
+                  >
+                    <LayoutDashboard className="h-4 w-4" />
+                    ACS 总览
+                  </Button>
+                )}
                 <UpdateBadge
                   onClick={() => {
                     setSettingsDefaultTab("about");
@@ -1279,6 +1302,7 @@ function App() {
 
           <div className="flex flex-1 min-w-0 items-center justify-end gap-1.5">
             {currentView === "providers" &&
+              showAdvancedProviders &&
               activeApp !== "opencode" &&
               activeApp !== "openclaw" &&
               activeApp !== "hermes" && (
@@ -1300,6 +1324,7 @@ function App() {
                 </div>
               )}
             {currentView === "providers" &&
+              showAdvancedProviders &&
               (settingsData?.showProfileSwitcher ?? true) && (
                 <div
                   className="flex shrink-0 items-center"
@@ -1311,7 +1336,7 @@ function App() {
             {/* 弹性中段：空间不足时由 AppSwitcher 自行收纳溢出应用；
                 justify-end + overflow-hidden 只裁剪 resize 瞬间的过渡帧 */}
             <div className="flex flex-1 min-w-0 items-center justify-end overflow-hidden py-4">
-              {currentView === "providers" && (
+              {currentView === "providers" && showAdvancedProviders && (
                 <AppSwitcher
                   activeApp={activeApp}
                   onSwitch={setActiveApp}
@@ -1467,7 +1492,7 @@ function App() {
                     )}
                   </>
                 )}
-                {currentView === "providers" && (
+                {currentView === "providers" && showAdvancedProviders && (
                   <>
                     <div className="flex items-center gap-1 p-1 bg-muted rounded-xl">
                       <AnimatePresence mode="wait">

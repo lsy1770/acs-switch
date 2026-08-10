@@ -195,6 +195,7 @@ export function DeepLinkImportDialog() {
             description: result.profileName,
             closeButton: true,
           });
+          window.dispatchEvent(new CustomEvent("acs-profile-imported"));
         }
       } else if (isMcpImportResult(result)) {
         // 兜底处理：旧版本后端可能未返回 type 字段

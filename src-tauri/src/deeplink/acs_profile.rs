@@ -26,9 +26,7 @@ struct AcsProvisionProfile {
     api_key: String,
     #[allow(dead_code)]
     api_key_id: u64,
-    #[allow(dead_code)]
     allowed_models: Vec<String>,
-    #[allow(dead_code)]
     provider_group_bindings: Vec<AcsProvisionBinding>,
     harnesses: Vec<AcsProvisionHarness>,
     expires_at: DateTime<Utc>,
@@ -36,11 +34,8 @@ struct AcsProvisionProfile {
 
 #[derive(Debug, Deserialize)]
 struct AcsProvisionBinding {
-    #[allow(dead_code)]
     account_type: String,
-    #[allow(dead_code)]
     group_id: u64,
-    #[allow(dead_code)]
     group_name: String,
 }
 
@@ -163,6 +158,7 @@ fn validate_and_build_provider_requests(
 
     let mut seen = std::collections::HashSet::new();
     let mut requests = Vec::with_capacity(profile.harnesses.len());
+    let notes = build_profile_notes(profile);
     for harness in &profile.harnesses {
         let expected_base_url = expected_harness_base_url(&harness.app).ok_or_else(|| {
             AppError::InvalidInput(format!("Unsupported ACS harness: {}", harness.app))
@@ -206,7 +202,7 @@ fn validate_and_build_provider_requests(
                 .model
                 .clone()
                 .filter(|model| !model.trim().is_empty()),
-            notes: Some("Managed by ACS Gateway profile".to_string()),
+            notes: Some(notes.clone()),
             ..Default::default()
         };
 
@@ -214,6 +210,44 @@ fn validate_and_build_provider_requests(
         requests.push(provider_request);
     }
     Ok(requests)
+}
+
+fn build_profile_notes(profile: &AcsProvisionProfile) -> String {
+    let mut groups = profile
+        .provider_group_bindings
+        .iter()
+        .map(|binding| {
+            let name = if binding.group_name.trim().is_empty() {
+                format!("Group {}", binding.group_id)
+            } else {
+                binding.group_name.trim().to_string()
+            };
+            if binding.account_type.trim().is_empty() {
+                name
+            } else {
+                format!("{}: {name}", binding.account_type.trim())
+            }
+        })
+        .collect::<Vec<_>>();
+    groups.sort();
+    groups.dedup();
+
+    let group_summary = if groups.is_empty() {
+        "Default routing".to_string()
+    } else {
+        groups.join(" / ")
+    };
+    let model_summary = if profile.allowed_models.is_empty()
+        || profile.allowed_models.iter().any(|model| model == "*")
+    {
+        "All models".to_string()
+    } else {
+        profile.allowed_models.join(", ")
+    };
+
+    format!(
+        "Managed by ACS Gateway profile\nGroups: {group_summary}\nAllowed models: {model_summary}"
+    )
 }
 
 fn expected_harness_base_url(app: &str) -> Option<&'static str> {
@@ -249,7 +283,11 @@ mod tests {
             api_key: "acs_test_key".to_string(),
             api_key_id: 1,
             allowed_models: vec!["*".to_string()],
-            provider_group_bindings: vec![],
+            provider_group_bindings: vec![AcsProvisionBinding {
+                account_type: "claude".to_string(),
+                group_id: 7,
+                group_name: "Primary".to_string(),
+            }],
             harnesses: vec![AcsProvisionHarness {
                 app: "claude".to_string(),
                 base_url: "https://acsgw.top/claude".to_string(),
@@ -268,6 +306,10 @@ mod tests {
             Some("https://acsgw.top/claude")
         );
         assert_eq!(requests[0].enabled, Some(true));
+        assert!(requests[0]
+            .notes
+            .as_deref()
+            .is_some_and(|notes| notes.contains("Groups: claude: Primary")));
     }
 
     #[test]
