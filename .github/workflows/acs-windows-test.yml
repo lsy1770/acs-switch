@@ -1,6 +1,9 @@
 name: ACS Windows Test Build
 
 on:
+  push:
+    branches:
+      - codex/acs-custom
   workflow_dispatch:
 
 permissions:
