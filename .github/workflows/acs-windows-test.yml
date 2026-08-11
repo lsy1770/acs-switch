@@ -3,6 +3,7 @@ name: ACS Windows Test Build
 on:
   push:
     branches:
+      - main
       - codex/acs-custom
   workflow_dispatch:
 
