@@ -156,6 +156,9 @@ pub(crate) fn build_provider_from_request(
 
     // Build usage script configuration if provided
     let mut meta = build_provider_meta(request)?;
+    if let Some(api_format) = validated_api_format(app_type, request)? {
+        meta.get_or_insert_with(ProviderMeta::default).api_format = Some(api_format);
+    }
     if matches!(app_type, AppType::ClaudeDesktop) {
         meta.get_or_insert_with(ProviderMeta::default)
             .claude_desktop_mode = Some(ClaudeDesktopMode::Direct);
@@ -177,6 +180,39 @@ pub(crate) fn build_provider_from_request(
     };
 
     Ok(provider)
+}
+
+fn validated_api_format(
+    app_type: &AppType,
+    request: &DeepLinkImportRequest,
+) -> Result<Option<String>, AppError> {
+    let Some(api_format) = request
+        .api_format
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+    else {
+        return Ok(None);
+    };
+
+    let supported = match app_type {
+        AppType::Claude | AppType::ClaudeDesktop => matches!(
+            api_format,
+            "anthropic" | "openai_chat" | "openai_responses" | "gemini_native"
+        ),
+        AppType::Codex => matches!(api_format, "anthropic" | "openai_chat" | "openai_responses"),
+        AppType::Gemini => api_format == "gemini_native",
+        AppType::GrokBuild => api_format == "openai_responses",
+        AppType::OpenCode | AppType::OpenClaw | AppType::Hermes => api_format == "openai_chat",
+    };
+    if !supported {
+        return Err(AppError::InvalidInput(format!(
+            "Unsupported API format '{api_format}' for {}",
+            app_type.as_str()
+        )));
+    }
+
+    Ok(Some(api_format.to_string()))
 }
 
 /// Get primary endpoint from request (first one if comma-separated)

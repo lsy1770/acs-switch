@@ -73,6 +73,9 @@ pub struct DeepLinkImportRequest {
     /// Optional model name
     #[serde(skip_serializing_if = "Option::is_none")]
     pub model: Option<String>,
+    /// Upstream protocol used by this provider.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub api_format: Option<String>,
     /// Optional notes/description
     #[serde(skip_serializing_if = "Option::is_none")]
     pub notes: Option<String>,

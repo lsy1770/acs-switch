@@ -43,6 +43,7 @@ struct AcsProvisionBinding {
 struct AcsProvisionHarness {
     app: String,
     base_url: String,
+    api_format: String,
     model: Option<String>,
 }
 
@@ -160,12 +161,14 @@ fn validate_and_build_provider_requests(
     let mut requests = Vec::with_capacity(profile.harnesses.len());
     let notes = build_profile_notes(profile);
     for harness in &profile.harnesses {
-        let expected_base_url = expected_harness_base_url(&harness.app).ok_or_else(|| {
+        let expected_config = expected_harness_config(&harness.app).ok_or_else(|| {
             AppError::InvalidInput(format!("Unsupported ACS harness: {}", harness.app))
         })?;
-        if harness.base_url != expected_base_url {
+        if harness.base_url != expected_config.base_url
+            || harness.api_format != expected_config.api_format
+        {
             return Err(AppError::InvalidInput(format!(
-                "Invalid ACS endpoint for {}",
+                "Invalid ACS endpoint or API format for {}",
                 harness.app
             )));
         }
@@ -202,6 +205,7 @@ fn validate_and_build_provider_requests(
                 .model
                 .clone()
                 .filter(|model| !model.trim().is_empty()),
+            api_format: Some(harness.api_format.clone()),
             notes: Some(notes.clone()),
             ..Default::default()
         };
@@ -250,13 +254,33 @@ fn build_profile_notes(profile: &AcsProvisionProfile) -> String {
     )
 }
 
-fn expected_harness_base_url(app: &str) -> Option<&'static str> {
+struct HarnessConfig {
+    base_url: &'static str,
+    api_format: &'static str,
+}
+
+fn expected_harness_config(app: &str) -> Option<HarnessConfig> {
     match app {
-        "claude" => Some("https://acsgw.top/claude"),
-        "codex" => Some("https://acsgw.top/openai"),
-        "gemini" => Some("https://acsgw.top/gemini"),
-        "grokbuild" => Some("https://acsgw.top/grok/v1"),
-        "opencode" | "openclaw" | "hermes" => Some("https://acsgw.top/v1"),
+        "claude" => Some(HarnessConfig {
+            base_url: "https://acsgw.top/claude",
+            api_format: "anthropic",
+        }),
+        "codex" => Some(HarnessConfig {
+            base_url: "https://acsgw.top/openai",
+            api_format: "openai_responses",
+        }),
+        "gemini" => Some(HarnessConfig {
+            base_url: "https://acsgw.top/gemini",
+            api_format: "gemini_native",
+        }),
+        "grokbuild" => Some(HarnessConfig {
+            base_url: "https://acsgw.top/grok/v1",
+            api_format: "openai_responses",
+        }),
+        "opencode" | "openclaw" | "hermes" => Some(HarnessConfig {
+            base_url: "https://acsgw.top/v1",
+            api_format: "openai_chat",
+        }),
         _ => None,
     }
 }
@@ -291,6 +315,7 @@ mod tests {
             harnesses: vec![AcsProvisionHarness {
                 app: "claude".to_string(),
                 base_url: "https://acsgw.top/claude".to_string(),
+                api_format: "anthropic".to_string(),
                 model: Some("claude-sonnet".to_string()),
             }],
             expires_at: Utc::now() + chrono::Duration::minutes(5),
@@ -306,6 +331,7 @@ mod tests {
             Some("https://acsgw.top/claude")
         );
         assert_eq!(requests[0].enabled, Some(true));
+        assert_eq!(requests[0].api_format.as_deref(), Some("anthropic"));
         assert!(requests[0]
             .notes
             .as_deref()
@@ -317,5 +343,96 @@ mod tests {
         let mut profile = valid_profile();
         profile.harnesses[0].base_url = "https://attacker.example".to_string();
         assert!(validate_and_build_provider_requests(&profile).is_err());
+    }
+
+    #[test]
+    fn rejects_api_format_substitution() {
+        let mut profile = valid_profile();
+        profile.harnesses[0].api_format = "openai_chat".to_string();
+        assert!(validate_and_build_provider_requests(&profile).is_err());
+    }
+
+    #[test]
+    fn builds_native_configuration_for_every_harness() {
+        let mut profile = valid_profile();
+        profile.harnesses = [
+            ("claude", "https://acsgw.top/claude", "anthropic"),
+            ("codex", "https://acsgw.top/openai", "openai_responses"),
+            ("gemini", "https://acsgw.top/gemini", "gemini_native"),
+            ("grokbuild", "https://acsgw.top/grok/v1", "openai_responses"),
+            ("opencode", "https://acsgw.top/v1", "openai_chat"),
+            ("openclaw", "https://acsgw.top/v1", "openai_chat"),
+            ("hermes", "https://acsgw.top/v1", "openai_chat"),
+        ]
+        .into_iter()
+        .map(|(app, base_url, api_format)| AcsProvisionHarness {
+            app: app.to_string(),
+            base_url: base_url.to_string(),
+            api_format: api_format.to_string(),
+            model: Some("routed-model".to_string()),
+        })
+        .collect();
+
+        let requests = validate_and_build_provider_requests(&profile).expect("profile");
+        for request in requests {
+            let app = AppType::from_str(request.app.as_deref().expect("app")).expect("app type");
+            let provider = build_provider_from_request(&app, &request).expect("provider");
+            assert_eq!(
+                provider
+                    .meta
+                    .as_ref()
+                    .and_then(|meta| meta.api_format.as_deref()),
+                request.api_format.as_deref()
+            );
+
+            match app {
+                AppType::Claude => {
+                    assert_eq!(
+                        provider.settings_config["env"]["ANTHROPIC_MODEL"],
+                        "routed-model"
+                    );
+                    assert_eq!(
+                        provider.settings_config["env"]["ANTHROPIC_BASE_URL"],
+                        "https://acsgw.top/claude"
+                    );
+                }
+                AppType::Codex => {
+                    let config = provider.settings_config["config"].as_str().expect("config");
+                    assert!(config.contains("model = \"routed-model\""));
+                    assert!(config.contains("wire_api = \"responses\""));
+                }
+                AppType::Gemini => {
+                    assert_eq!(
+                        provider.settings_config["env"]["GEMINI_MODEL"],
+                        "routed-model"
+                    );
+                    assert_eq!(
+                        provider.settings_config["env"]["GOOGLE_GEMINI_BASE_URL"],
+                        "https://acsgw.top/gemini"
+                    );
+                }
+                AppType::GrokBuild => {
+                    let config = provider.settings_config["config"].as_str().expect("config");
+                    assert!(config.contains("model = \"routed-model\""));
+                    assert!(config.contains("api_backend = \"responses\""));
+                }
+                AppType::OpenCode => {
+                    assert_eq!(provider.settings_config["npm"], "@ai-sdk/openai-compatible");
+                    assert_eq!(
+                        provider.settings_config["options"]["baseURL"],
+                        "https://acsgw.top/v1"
+                    );
+                }
+                AppType::OpenClaw => {
+                    assert_eq!(provider.settings_config["api"], "openai-completions");
+                    assert_eq!(provider.settings_config["baseUrl"], "https://acsgw.top/v1");
+                }
+                AppType::Hermes => {
+                    assert_eq!(provider.settings_config["api_mode"], "chat_completions");
+                    assert_eq!(provider.settings_config["base_url"], "https://acsgw.top/v1");
+                }
+                AppType::ClaudeDesktop => unreachable!("not part of the ACS harness catalog"),
+            }
+        }
     }
 }
