@@ -141,7 +141,7 @@ fn validate_and_build_provider_requests(
             "ACS profile has expired".to_string(),
         ));
     }
-    if !profile.api_key.starts_with("acs_") || profile.api_key.len() > 128 {
+    if !profile.api_key.starts_with("acs_client_v1_") || profile.api_key.len() > 128 {
         return Err(AppError::InvalidInput(
             "ACS profile contains an invalid API key".to_string(),
         ));
@@ -304,7 +304,7 @@ mod tests {
             version: 1,
             gateway_origin: ACS_GATEWAY_ORIGIN.to_string(),
             name: "team-a".to_string(),
-            api_key: "acs_test_key".to_string(),
+            api_key: "acs_client_v1_z_test_signature".to_string(),
             api_key_id: 1,
             allowed_models: vec!["*".to_string()],
             provider_group_bindings: vec![AcsProvisionBinding {
