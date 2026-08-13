@@ -151,7 +151,7 @@ fn validate_and_build_provider_requests(
             "ACS profile name is invalid".to_string(),
         ));
     }
-    if profile.harnesses.is_empty() || profile.harnesses.len() > 7 {
+    if profile.harnesses.is_empty() || profile.harnesses.len() > 8 {
         return Err(AppError::InvalidInput(
             "ACS profile contains no supported harnesses".to_string(),
         ));
@@ -191,6 +191,15 @@ fn validate_and_build_provider_requests(
 
         let app_type = AppType::from_str(&harness.app)
             .map_err(|_| AppError::InvalidInput(format!("Invalid app: {}", harness.app)))?;
+        let selected_model = harness
+            .model
+            .clone()
+            .filter(|model| !model.trim().is_empty());
+        let claude_role_model = if harness.app == "claude" {
+            selected_model.clone()
+        } else {
+            None
+        };
         let provider_request = DeepLinkImportRequest {
             version: "v1".to_string(),
             resource: "provider".to_string(),
@@ -201,10 +210,10 @@ fn validate_and_build_provider_requests(
             endpoint: Some(harness.base_url.clone()),
             api_key: Some(profile.api_key.clone()),
             icon: Some(icon_for_harness(&harness.app).to_string()),
-            model: harness
-                .model
-                .clone()
-                .filter(|model| !model.trim().is_empty()),
+            model: selected_model,
+            haiku_model: claude_role_model.clone(),
+            sonnet_model: claude_role_model.clone(),
+            opus_model: claude_role_model,
             api_format: Some(harness.api_format.clone()),
             notes: Some(notes.clone()),
             ..Default::default()
@@ -261,7 +270,7 @@ struct HarnessConfig {
 
 fn expected_harness_config(app: &str) -> Option<HarnessConfig> {
     match app {
-        "claude" => Some(HarnessConfig {
+        "claude" | "claude-desktop" => Some(HarnessConfig {
             base_url: "https://acsgw.top/claude",
             api_format: "anthropic",
         }),
@@ -287,7 +296,7 @@ fn expected_harness_config(app: &str) -> Option<HarnessConfig> {
 
 fn icon_for_harness(app: &str) -> &'static str {
     match app {
-        "claude" => "anthropic",
+        "claude" | "claude-desktop" => "anthropic",
         "codex" | "opencode" | "openclaw" | "hermes" => "openai",
         "gemini" => "gemini",
         "grokbuild" => "grok",
@@ -391,6 +400,13 @@ mod tests {
                         provider.settings_config["env"]["ANTHROPIC_MODEL"],
                         "routed-model"
                     );
+                    for field in [
+                        "ANTHROPIC_DEFAULT_HAIKU_MODEL",
+                        "ANTHROPIC_DEFAULT_SONNET_MODEL",
+                        "ANTHROPIC_DEFAULT_OPUS_MODEL",
+                    ] {
+                        assert_eq!(provider.settings_config["env"][field], "routed-model");
+                    }
                     assert_eq!(
                         provider.settings_config["env"]["ANTHROPIC_BASE_URL"],
                         "https://acsgw.top/claude"
@@ -434,5 +450,58 @@ mod tests {
                 AppType::ClaudeDesktop => unreachable!("not part of the ACS harness catalog"),
             }
         }
+    }
+
+    #[test]
+    fn builds_claude_desktop_profile_with_selected_model() {
+        let mut profile = valid_profile();
+        profile.harnesses = vec![AcsProvisionHarness {
+            app: "claude-desktop".to_string(),
+            base_url: "https://acsgw.top/claude".to_string(),
+            api_format: "anthropic".to_string(),
+            model: Some("claude-sonnet-4-6".to_string()),
+        }];
+
+        let requests = validate_and_build_provider_requests(&profile).expect("profile");
+        let provider = build_provider_from_request(&AppType::ClaudeDesktop, &requests[0])
+            .expect("desktop provider");
+        let routes = &provider
+            .meta
+            .as_ref()
+            .expect("desktop meta")
+            .claude_desktop_model_routes;
+
+        assert_eq!(
+            provider.settings_config["env"]["ANTHROPIC_MODEL"],
+            "claude-sonnet-4-6"
+        );
+        assert_eq!(
+            routes
+                .get("claude-sonnet-4-6")
+                .map(|route| route.model.as_str()),
+            Some("claude-sonnet-4-6")
+        );
+        crate::claude_desktop_config::validate_provider(&provider).expect("valid desktop provider");
+    }
+
+    #[test]
+    fn codex_without_selected_model_does_not_invent_one() {
+        let mut profile = valid_profile();
+        profile.harnesses = vec![AcsProvisionHarness {
+            app: "codex".to_string(),
+            base_url: "https://acsgw.top/openai".to_string(),
+            api_format: "openai_responses".to_string(),
+            model: None,
+        }];
+
+        let requests = validate_and_build_provider_requests(&profile).expect("profile");
+        let provider =
+            build_provider_from_request(&AppType::Codex, &requests[0]).expect("codex provider");
+        let config = provider.settings_config["config"].as_str().expect("config");
+
+        assert!(!config.contains("gpt-5-codex"));
+        assert!(!config
+            .lines()
+            .any(|line| line.trim_start().starts_with("model =")));
     }
 }

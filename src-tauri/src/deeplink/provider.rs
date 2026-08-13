@@ -5,7 +5,9 @@
 use super::utils::{decode_base64_param, infer_homepage_from_endpoint};
 use super::DeepLinkImportRequest;
 use crate::error::AppError;
-use crate::provider::{ClaudeDesktopMode, Provider, ProviderMeta, UsageScript};
+use crate::provider::{
+    ClaudeDesktopMode, ClaudeDesktopModelRoute, Provider, ProviderMeta, UsageScript,
+};
 use crate::services::ProviderService;
 use crate::store::AppState;
 use crate::AppType;
@@ -160,8 +162,23 @@ pub(crate) fn build_provider_from_request(
         meta.get_or_insert_with(ProviderMeta::default).api_format = Some(api_format);
     }
     if matches!(app_type, AppType::ClaudeDesktop) {
-        meta.get_or_insert_with(ProviderMeta::default)
-            .claude_desktop_mode = Some(ClaudeDesktopMode::Direct);
+        let desktop_meta = meta.get_or_insert_with(ProviderMeta::default);
+        desktop_meta.claude_desktop_mode = Some(ClaudeDesktopMode::Direct);
+        if let Some(model) = request
+            .model
+            .as_deref()
+            .map(str::trim)
+            .filter(|model| !model.is_empty())
+        {
+            desktop_meta.claude_desktop_model_routes.insert(
+                model.to_string(),
+                ClaudeDesktopModelRoute {
+                    model: model.to_string(),
+                    label_override: None,
+                    supports_1m: None,
+                },
+            );
+        }
     }
 
     let provider = Provider {
@@ -437,12 +454,13 @@ fn build_codex_settings(request: &DeepLinkImportRequest) -> serde_json::Value {
         provider_display_name
     };
 
-    // Model name: use deeplink model or default
-    let model_name = request
+    let model_line = request
         .model
         .as_deref()
-        .unwrap_or("gpt-5-codex")
-        .to_string();
+        .map(str::trim)
+        .filter(|model| !model.is_empty())
+        .map(|model| format!("model = {}\n", toml_edit::Value::from(model).to_string()))
+        .unwrap_or_default();
 
     // Endpoint: normalize trailing slashes (use primary endpoint only)
     let endpoint = get_primary_endpoint(request)
@@ -451,14 +469,12 @@ fn build_codex_settings(request: &DeepLinkImportRequest) -> serde_json::Value {
         .to_string();
 
     let provider_display_name = toml_edit::Value::from(provider_display_name.as_str()).to_string();
-    let model_name = toml_edit::Value::from(model_name.as_str()).to_string();
     let endpoint = toml_edit::Value::from(endpoint.as_str()).to_string();
 
     // Build config.toml content
     let config_toml = format!(
         r#"model_provider = "custom"
-model = {model_name}
-model_reasoning_effort = "high"
+{model_line}model_reasoning_effort = "high"
 disable_response_storage = true
 
 [model_providers.custom]
