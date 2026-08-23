@@ -1,6 +1,6 @@
 {
   "name": "acs-switch",
-  "version": "3.19.2",
+  "version": "3.20.0",
   "description": "ACS Gateway assistant for Claude Code, Codex and Gemini CLI",
   "type": "module",
   "scripts": {

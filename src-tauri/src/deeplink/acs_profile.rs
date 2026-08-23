@@ -416,6 +416,7 @@ mod tests {
                     let config = provider.settings_config["config"].as_str().expect("config");
                     assert!(config.contains("model = \"routed-model\""));
                     assert!(config.contains("wire_api = \"responses\""));
+                    assert!(config.contains("requires_openai_auth = true"));
                 }
                 AppType::Gemini => {
                     assert_eq!(
@@ -447,7 +448,9 @@ mod tests {
                     assert_eq!(provider.settings_config["api_mode"], "chat_completions");
                     assert_eq!(provider.settings_config["base_url"], "https://acsgw.top/v1");
                 }
-                AppType::ClaudeDesktop => unreachable!("not part of the ACS harness catalog"),
+                AppType::ClaudeDesktop | AppType::Pi => {
+                    unreachable!("not part of the ACS harness catalog")
+                }
             }
         }
     }

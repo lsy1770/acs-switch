@@ -154,6 +154,11 @@ pub(crate) fn build_provider_from_request(
         AppType::OpenCode => build_opencode_settings(request),
         AppType::OpenClaw => build_additive_app_settings(request),
         AppType::Hermes => build_hermes_settings(request),
+        AppType::Pi => {
+            return Err(AppError::InvalidInput(
+                "Pi providers must be added from the Pi provider page".to_string(),
+            ));
+        }
     };
 
     // Build usage script configuration if provided
@@ -221,6 +226,7 @@ fn validated_api_format(
         AppType::Gemini => api_format == "gemini_native",
         AppType::GrokBuild => api_format == "openai_responses",
         AppType::OpenCode | AppType::OpenClaw | AppType::Hermes => api_format == "openai_chat",
+        AppType::Pi => false,
     };
     if !supported {
         return Err(AppError::InvalidInput(format!(
@@ -1211,6 +1217,18 @@ mod tests {
                 .get("base_url")
                 .and_then(|value| value.as_str()),
             Some("https://api.example.com/v1")
+        );
+        assert_eq!(
+            custom_provider
+                .get("requires_openai_auth")
+                .and_then(|value| value.as_bool()),
+            Some(true)
+        );
+        assert_eq!(
+            custom_provider
+                .get("wire_api")
+                .and_then(|value| value.as_str()),
+            Some("responses")
         );
     }
 
